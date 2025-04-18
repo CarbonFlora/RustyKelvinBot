@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Context as _;
 use serenity::async_trait;
 use serenity::model::channel::Message;
@@ -12,7 +14,16 @@ struct Bot;
 impl EventHandler for Bot {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content == "!hello" {
-            if let Err(e) = msg.channel_id.say(&ctx.http, "world!").await {
+            let resp = reqwest::get("https://jsonplaceholder.typicode.com/posts")
+                .await
+                .unwrap()
+                .json::<HashMap<String, String>>()
+                .await
+                .unwrap();
+            let a = resp.iter().fold(String::new(), |acc, v| {
+                acc + format!("\n{} | {}", v.0, v.1).as_str()
+            });
+            if let Err(e) = msg.channel_id.say(&ctx.http, a).await {
                 error!("Error sending message: {:?}", e);
             }
         }

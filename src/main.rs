@@ -16,10 +16,10 @@ impl EventHandler for Bot {
         if msg.content == "!hello" {
             let resp = reqwest::get("https://jsonplaceholder.typicode.com/posts")
                 .await
-                .unwrap()
+                .expect("query fail")
                 .json::<HashMap<String, String>>()
                 .await
-                .unwrap();
+                .expect("json parse fail");
             let a = resp.iter().fold(String::new(), |acc, v| {
                 acc + format!("\n{} | {}", v.0, v.1).as_str()
             });

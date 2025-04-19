@@ -20,15 +20,15 @@ pub struct WeatherJson {
     pub weather: Vec<Weather>,
     pub base: String,
     pub main: Main,
-    pub visibility: u64,
+    pub visibility: f64,
     pub wind: Wind,
     pub clouds: Clouds,
-    pub dt: i64,
+    pub dt: f64,
     pub sys: Sys,
-    pub timezone: i64,
-    pub id: u64,
+    pub timezone: f64,
+    pub id: f64,
     pub name: String,
-    pub cod: u64,
+    pub cod: f64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -83,11 +83,11 @@ pub struct Clouds {
 #[serde(rename_all = "camelCase")]
 pub struct Sys {
     #[serde(rename = "type")]
-    pub type_field: u64,
-    pub id: u64,
+    pub type_field: f64,
+    pub id: f64,
     pub country: String,
-    pub sunrise: i64,
-    pub sunset: i64,
+    pub sunrise: f64,
+    pub sunset: f64,
 }
 
 impl Display for GeoJson {

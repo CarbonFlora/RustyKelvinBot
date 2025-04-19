@@ -4,6 +4,7 @@ use toml::Table;
 
 const TOKEN_FILE_PATH_STR: &str = "./Secrets.toml";
 const OPEN_WEATHER_TOKEN: &str = "OPEN_WEATHER_TOKEN";
+const DEEPSEEK_TOKEN: &str = "DEEPSEEK_TOKEN";
 
 #[derive(Debug, Clone)]
 pub struct RKBTokens {
@@ -13,6 +14,7 @@ pub struct RKBTokens {
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub enum TokenType {
     OpenWeather,
+    DeepSeek,
 }
 
 impl TryFrom<String> for TokenType {
@@ -21,6 +23,7 @@ impl TryFrom<String> for TokenType {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.as_str() {
             OPEN_WEATHER_TOKEN => Ok(TokenType::OpenWeather),
+            DEEPSEEK_TOKEN => Ok(TokenType::DeepSeek),
             _ => Err(format!("Failed to parse key ({}) into token.", value)),
         }
     }

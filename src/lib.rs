@@ -1,4 +1,4 @@
-use serenity::all::{Context, Message};
+use serenity::all::{Context, EditMessage, Message};
 use token::RKBTokens;
 use tracing::error;
 
@@ -27,20 +27,22 @@ impl RustyKelvinBot {
         if !self.msg.content.starts_with(ENTRY_STRING) {
             return;
         }
-        let mut content = self
+        let stripped_msg = self
             .msg
             .content
             .trim_start_matches(ENTRY_STRING)
-            .split_whitespace()
-            .collect::<Vec<&str>>();
-        let Some(action) = content.first().copied() else {
-            return;
-        };
-        content.remove(0);
+            .to_string();
+        let (action, content) = stripped_msg
+            .split_once(' ')
+            .map(|v| (v.0.to_string(), v.1.to_string()))
+            .unwrap_or((stripped_msg, String::new()));
+
+        // .unwrap_or((&stripped_msg, ""));
         let rkb_binding = self.clone();
-        match action {
+        match action.as_str() {
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
             "geo" => tokio::spawn(rkb_binding.geo()),
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat(content.clone())),
             "test" => tokio::spawn(rkb_binding.test()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };
@@ -50,10 +52,20 @@ impl RustyKelvinBot {
         self.send_message("non-action. 🎣".to_owned()).await;
     }
 
-    async fn send_message(self, mut response: String) {
+    async fn send_message(self, mut response: String) -> Option<Message> {
         response.truncate(2000);
-        if let Err(e) = self.msg.channel_id.say(&self.ctx.http, response).await {
-            error!("Error sending message: {:?}", e);
-        }
+        match self.msg.channel_id.say(&self.ctx.http, response).await {
+            Ok(message) => return Some(message),
+            Err(e) => error!("Error sending message: {:?}", e),
+        };
+        None
+    }
+
+    async fn edit_message(self, message: &mut Message, response: &str) {
+        let builder = EditMessage::new().content(response);
+        message
+            .edit(self.ctx, builder)
+            .await
+            .expect("Failed to edit Discord message.");
     }
 }

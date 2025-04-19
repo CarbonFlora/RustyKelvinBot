@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serenity::all::{Context, EditMessage, Message};
 use token::RKBTokens;
 use tracing::error;
@@ -52,20 +54,48 @@ impl RustyKelvinBot {
         self.send_message("non-action. 🎣".to_owned()).await;
     }
 
-    async fn send_message(self, mut response: String) -> Option<Message> {
-        response.truncate(2000);
-        match self.msg.channel_id.say(&self.ctx.http, response).await {
-            Ok(message) => return Some(message),
-            Err(e) => error!("Error sending message: {:?}", e),
-        };
-        None
+    async fn send_message(self, response: String) -> Option<Message> {
+        let responses = breakdown_string(response);
+        self.send_message_batch(responses).await
     }
 
-    async fn edit_message(self, message: &mut Message, response: &str) {
-        let builder = EditMessage::new().content(response);
+    async fn send_message_batch(self, responses: VecDeque<String>) -> Option<Message> {
+        let mut latest_message = None;
+        for response in responses {
+            match self.msg.channel_id.say(&self.ctx.http, response).await {
+                Ok(message) => latest_message = Some(message),
+                Err(e) => error!("Error sending message: {:?}", e),
+            };
+        }
+        latest_message
+    }
+
+    async fn edit_message(self, message: &mut Message, response: &str) -> Option<Message> {
+        let mut responses = breakdown_string(response.to_string());
+        let first_response = responses.pop_front()?;
+        let builder = EditMessage::new().content(first_response);
         message
-            .edit(self.ctx, builder)
+            .edit(self.ctx.clone(), builder)
             .await
             .expect("Failed to edit Discord message.");
+        self.send_message_batch(responses).await
     }
+}
+
+const MAX_MESSAGE_BREAKS: usize = 3;
+
+fn breakdown_string(string: String) -> VecDeque<String> {
+    let mut strings = VecDeque::new();
+    let mut remaining_string = string;
+    let mut available_message_breaks = MAX_MESSAGE_BREAKS;
+    while available_message_breaks > 0 && !remaining_string.is_empty() {
+        let (string_block, remaining_string_block) = remaining_string
+            .split_at_checked(2000)
+            .map(|v| (v.0.to_string(), v.1.to_string()))
+            .unwrap_or((remaining_string, String::new()));
+        remaining_string = remaining_string_block.to_string();
+        available_message_breaks -= 1;
+        strings.push_back(string_block.to_string());
+    }
+    strings
 }

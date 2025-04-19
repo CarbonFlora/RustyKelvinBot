@@ -263,8 +263,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 [[package]]
 name = "deepseek_rs"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27ef7c126775442332e78cf97b4d386e5707fae7b42565cb406b5cd5b4c1e7d8"
+source = "git+https://github.com/CarbonFlora/deepseek_rs.git#05344e6fd9dbeb7c6fd8f70be25b31b22e7de0fd"
 dependencies = [
  "chrono",
  "dotenvy",

@@ -1,15 +1,28 @@
 use deepseek_rs::{
     client::chat_completions::request::{Message, RequestBody},
+    request::Role,
     DeepSeekClient,
 };
 
 use crate::{token::TokenType, RustyKelvinBot};
 
+const CONTEXT_SIZE: u8 = 21;
+
 impl RustyKelvinBot {
-    pub async fn deepseek_chat(self, content: String) {
+    pub async fn deepseek_chat(self) {
         let api_key = self.tokens.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
-        let request = RequestBody::new_messages(vec![Message::new_user_message(content)]);
+        let messages = self
+            .clone()
+            .read_latest_messages(self.msg.channel_id, CONTEXT_SIZE)
+            .await
+            .into_iter()
+            .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
+            .rev()
+            .collect::<Vec<Message>>();
+        println!("input: {:?}", messages.last());
+        // messages.push(Message::new_user_message(content));
+        let request = RequestBody::new_messages(messages);
         let mut skeleton_message = self
             .clone()
             .send_message(String::from("*Thinking...*"))
@@ -29,5 +42,19 @@ impl RustyKelvinBot {
             .content
             .expect("DeekSeek responded with an empty message.");
         self.edit_message(&mut skeleton_message, &response).await;
+    }
+}
+
+trait ToDeepseekMessage {
+    fn to_deekseek_message(self, bot_userid: serenity::all::UserId) -> Message;
+}
+
+impl ToDeepseekMessage for serenity::all::Message {
+    fn to_deekseek_message(self, bot_userid: serenity::all::UserId) -> Message {
+        let role = match bot_userid == self.author.id {
+            true => Role::Assistant,
+            false => Role::User,
+        };
+        Message::new(role, self.content, None)
     }
 }

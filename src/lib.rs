@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use serenity::all::{Context, EditMessage, Message};
+use serenity::all::{ChannelId, Context, EditMessage, GetMessages, Message};
 use token::RKBTokens;
 use tracing::error;
 
@@ -34,7 +34,7 @@ impl RustyKelvinBot {
             .content
             .trim_start_matches(ENTRY_STRING)
             .to_string();
-        let (action, content) = stripped_msg
+        let (action, _content) = stripped_msg
             .split_once(' ')
             .map(|v| (v.0.to_string(), v.1.to_string()))
             .unwrap_or((stripped_msg, String::new()));
@@ -44,7 +44,7 @@ impl RustyKelvinBot {
         match action.as_str() {
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
             "geo" => tokio::spawn(rkb_binding.geo()),
-            "chat" => tokio::spawn(rkb_binding.deepseek_chat(content.clone())),
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat()),
             "test" => tokio::spawn(rkb_binding.test()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };
@@ -68,6 +68,13 @@ impl RustyKelvinBot {
             };
         }
         latest_message
+    }
+
+    async fn read_latest_messages(self, channel_id: ChannelId, count: u8) -> Vec<Message> {
+        channel_id
+            .messages(self.ctx.http, GetMessages::new().limit(count))
+            .await
+            .expect("Failed to get text channel history.")
     }
 
     async fn edit_message(self, message: &mut Message, response: &str) -> Option<Message> {

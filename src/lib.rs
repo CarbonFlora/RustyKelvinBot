@@ -29,17 +29,7 @@ impl RustyKelvinBot {
         if !self.msg.content.starts_with(ENTRY_STRING) {
             return;
         }
-        let stripped_msg = self
-            .msg
-            .content
-            .trim_start_matches(ENTRY_STRING)
-            .to_string();
-        let (action, _content) = stripped_msg
-            .split_once(' ')
-            .map(|v| (v.0.to_string(), v.1.to_string()))
-            .unwrap_or((stripped_msg, String::new()));
-
-        // .unwrap_or((&stripped_msg, ""));
+        let (action, _content) = split_action(self.msg.content.clone());
         let rkb_binding = self.clone();
         match action.as_str() {
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
@@ -87,6 +77,14 @@ impl RustyKelvinBot {
             .expect("Failed to edit Discord message.");
         self.send_message_batch(responses).await
     }
+}
+
+pub fn split_action(message: String) -> (String, String) {
+    let stripped_msg = message.trim_start_matches(ENTRY_STRING).to_string();
+    stripped_msg
+        .split_once(' ')
+        .map(|v| (v.0.to_string(), v.1.to_string()))
+        .unwrap_or((stripped_msg, String::new()))
 }
 
 const MAX_MESSAGE_BREAKS: usize = 3;

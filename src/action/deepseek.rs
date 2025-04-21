@@ -4,7 +4,7 @@ use deepseek_rs::{
     DeepSeekClient,
 };
 
-use crate::{token::TokenType, RustyKelvinBot};
+use crate::{split_action, token::TokenType, RustyKelvinBot};
 
 const CONTEXT_SIZE: u8 = 21;
 
@@ -20,6 +20,7 @@ impl RustyKelvinBot {
             .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
             .rev()
             .collect::<Vec<Message>>();
+        println!("{:#?}", messages);
         let request = RequestBody::new_messages(messages);
         let mut skeleton_message = self
             .clone()
@@ -49,10 +50,10 @@ trait ToDeepseekMessage {
 
 impl ToDeepseekMessage for serenity::all::Message {
     fn to_deekseek_message(self, bot_userid: serenity::all::UserId) -> Message {
-        let role = match bot_userid == self.author.id {
-            true => Role::Assistant,
-            false => Role::User,
+        let (role, (_, content)) = match bot_userid == self.author.id {
+            true => (Role::Assistant, (String::new(), self.content)),
+            false => (Role::User, split_action(self.content)),
         };
-        Message::new(role, self.content, None)
+        Message::new(role, content, None)
     }
 }

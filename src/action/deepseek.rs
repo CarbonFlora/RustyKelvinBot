@@ -20,8 +20,6 @@ impl RustyKelvinBot {
             .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
             .rev()
             .collect::<Vec<Message>>();
-        println!("input: {:?}", messages.last());
-        // messages.push(Message::new_user_message(content));
         let request = RequestBody::new_messages(messages);
         let mut skeleton_message = self
             .clone()

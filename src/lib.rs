@@ -34,7 +34,8 @@ impl RustyKelvinBot {
         match action.as_str() {
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
             "geo" => tokio::spawn(rkb_binding.geo()),
-            "chat" => tokio::spawn(rkb_binding.deepseek_chat()),
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false)),
+            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true)),
             "test" => tokio::spawn(rkb_binding.test()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };

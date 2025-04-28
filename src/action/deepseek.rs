@@ -1,6 +1,6 @@
 use deepseek_rs::{
     client::chat_completions::request::{Message, RequestBody},
-    request::Role,
+    request::{Model, Role},
     DeepSeekClient,
 };
 
@@ -9,7 +9,7 @@ use crate::{split_action, token::TokenType, RustyKelvinBot};
 const CONTEXT_SIZE: u8 = 21;
 
 impl RustyKelvinBot {
-    pub async fn deepseek_chat(self) {
+    pub async fn deepseek_chat(self, reasoning: bool) {
         let api_key = self.tokens.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
         let messages = self
@@ -20,8 +20,10 @@ impl RustyKelvinBot {
             .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
             .rev()
             .collect::<Vec<Message>>();
-        // println!("{:#?}", messages);
-        let request = RequestBody::new_messages(messages);
+        let request = match reasoning {
+            true => RequestBody::new_messages(messages).with_model(Model::DeepSeekReasoner),
+            false => RequestBody::new_messages(messages).with_model(Model::DeepseekChat),
+        };
         let mut skeleton_message = self
             .clone()
             .send_message(String::from("*Thinking...*"))

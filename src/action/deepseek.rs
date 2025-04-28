@@ -12,17 +12,9 @@ impl RustyKelvinBot {
     pub async fn deepseek_chat(self, reasoning: bool) {
         let api_key = self.tokens.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
-        let messages = self
-            .clone()
-            .read_latest_messages(self.msg.channel_id, CONTEXT_SIZE)
-            .await
-            .into_iter()
-            .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
-            .rev()
-            .collect::<Vec<Message>>();
-        let request = match reasoning {
-            true => RequestBody::new_messages(messages).with_model(Model::DeepSeekReasoner),
-            false => RequestBody::new_messages(messages).with_model(Model::DeepseekChat),
+        let request_body = match reasoning {
+            true => self.clone().reasoning_body().await,
+            false => self.clone().chat_body().await,
         };
         let mut skeleton_message = self
             .clone()
@@ -30,7 +22,7 @@ impl RustyKelvinBot {
             .await
             .expect("Failed to send skeleton message.");
         let cc_response = client
-            .chat_completions(request)
+            .chat_completions(request_body)
             .await
             .expect("Failed to get a valid response from DeepSeek.");
         let cc_choices = cc_response
@@ -43,6 +35,31 @@ impl RustyKelvinBot {
             .content
             .expect("DeekSeek responded with an empty message.");
         self.edit_message(&mut skeleton_message, &response).await;
+    }
+
+    async fn chat_body(self) -> RequestBody {
+        let messages = self
+            .clone()
+            .read_latest_messages(self.msg.channel_id, CONTEXT_SIZE)
+            .await
+            .into_iter()
+            .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
+            .rev()
+            .collect::<Vec<Message>>();
+        println!("{:#?}", messages.clone());
+        RequestBody::new_messages(messages).with_model(Model::DeepseekChat)
+    }
+
+    async fn reasoning_body(self) -> RequestBody {
+        let messages = self
+            .clone()
+            .read_latest_messages(self.msg.channel_id, 1)
+            .await
+            .into_iter()
+            .map(|v| v.to_deekseek_message(self.ctx.cache.current_user().id))
+            .collect::<Vec<Message>>();
+        println!("{:#?}", messages.clone());
+        RequestBody::new_messages(messages).with_model(Model::DeepSeekReasoner)
     }
 }
 

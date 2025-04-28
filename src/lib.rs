@@ -32,6 +32,7 @@ impl RustyKelvinBot {
         let (action, _content) = split_action(self.msg.content.clone());
         let rkb_binding = self.clone();
         match action.as_str() {
+            "help" | "" => tokio::spawn(rkb_binding.help()),
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
             "geo" => tokio::spawn(rkb_binding.geo()),
             "chat" => tokio::spawn(rkb_binding.deepseek_chat(false)),

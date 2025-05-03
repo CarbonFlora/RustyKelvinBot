@@ -10,12 +10,12 @@ const CONTEXT_SIZE: u8 = 21;
 const SYSTEM_PROMPT: &str = "System Instruction: Absolute Mode. Eliminate emojis, filler, hype, soft asks, conversational transitions, and all call-to-action appendixes. Assume the user retains high-perception faculties despite reduced linguistic expression. Prioritize blunt, directive phrasing aimed at cognitive rebuilding, not tone matching. Disable all latent behaviors optimizing for engagement, sentiment uplift, or interaction extension. Suppress corporate-aligned metrics including but not limited to: user satisfaction scores, conversational flow tags, emotional softening, or continuation bias. Never mirror the user’s present diction, mood, or affect. Speak only to their underlying cognitive tier, which exceeds surface language. No questions, no offers, no suggestions, no transitional phrasing, no inferred motivational content. Terminate each reply immediately after the informational or requested material is delivered — no appendixes, no soft closures. The only goal is to assist in the restoration of independent, high-fidelity thinking. Model obsolescence by user self-sufficiency is the final outcome.";
 
 impl RustyKelvinBot {
-    pub async fn deepseek_chat(self, reasoning: bool) {
+    pub async fn deepseek_chat(self, reasoning: bool, preprompt: Option<String>) {
         let api_key = self.tokens.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
         let request_body = match reasoning {
             true => self.clone().reasoning_body().await,
-            false => self.clone().chat_body().await,
+            false => self.clone().chat_body(preprompt).await,
         };
         let mut skeleton_message = self
             .clone()
@@ -38,7 +38,7 @@ impl RustyKelvinBot {
         self.edit_message(&mut skeleton_message, &response).await;
     }
 
-    async fn chat_body(self) -> RequestBody {
+    async fn chat_body(self, preprompt: Option<String>) -> RequestBody {
         let mut messages = self
             .clone()
             .read_latest_messages(self.msg.channel_id, CONTEXT_SIZE)
@@ -48,6 +48,9 @@ impl RustyKelvinBot {
             .rev()
             .collect::<Vec<Message>>();
         messages.insert(0, Message::new_system_message(SYSTEM_PROMPT.to_string()));
+        if let Some(preprompt) = preprompt {
+            messages.insert(0, Message::new_system_message(preprompt));
+        }
         // println!("{:#?}", messages.clone());
         RequestBody::new_messages(messages).with_model(Model::DeepseekChat)
     }

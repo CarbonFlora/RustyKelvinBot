@@ -13,7 +13,13 @@ struct Bot;
 impl EventHandler for Bot {
     async fn message(&self, ctx: Context, msg: Message) {
         let rkb = RustyKelvinBot::new(ctx, msg);
-        rkb.handle_message().await;
+        if !rkb.is_user_message().await {
+            return;
+        }
+        if rkb.clone().pinned_handle_message().await {
+            return;
+        }
+        rkb.clone().handle_message().await;
     }
 
     async fn ready(&self, _: Context, ready: Ready) {

@@ -25,6 +25,10 @@ impl RustyKelvinBot {
         }
     }
 
+    pub async fn is_user_message(&self) -> bool {
+        !self.msg.author.bot && !self.msg.author.system
+    }
+
     pub async fn handle_message(self) {
         if !self.msg.content.starts_with(ENTRY_STRING) {
             return;
@@ -35,15 +39,43 @@ impl RustyKelvinBot {
             "help" | "" => tokio::spawn(rkb_binding.help()),
             "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
             "geo" => tokio::spawn(rkb_binding.geo()),
-            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false)),
-            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true)),
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
+            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
             "test" => tokio::spawn(rkb_binding.test()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };
     }
 
+    pub async fn pinned_handle_message(self) -> bool {
+        let pinned_messages = self
+            .msg
+            .channel_id
+            .pins(&self.ctx.http)
+            .await
+            .expect("Bot missing read history permissions.");
+        let Some(pinned_message) = pinned_messages
+            .into_iter()
+            .find(|msg| msg.content.starts_with(ENTRY_STRING))
+        else {
+            return false;
+        };
+        let (pinned_action, pinned_content) = split_action(pinned_message.content);
+        let (_action, _content) = split_action(self.msg.content.clone());
+        let rkb_binding = self.clone();
+        match pinned_action.as_str() {
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, Some(pinned_content))),
+            _ => tokio::spawn(rkb_binding.nonaction_pinned()),
+        };
+        true
+    }
+
     async fn nonaction(self) {
         self.send_message("non-action. 🎣".to_owned()).await;
+    }
+
+    async fn nonaction_pinned(self) {
+        self.send_message("Pinned message is a non-action. 🎣".to_owned())
+            .await;
     }
 
     async fn send_message(self, response: String) -> Option<Message> {

@@ -5,6 +5,7 @@ use token::RKBTokens;
 use tracing::error;
 
 pub mod action;
+pub mod text;
 mod token;
 
 #[derive(Debug, Clone)]

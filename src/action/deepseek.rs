@@ -11,7 +11,7 @@ const SYSTEM_PROMPT: &str = "System Instruction: Absolute Mode. Eliminate emojis
 
 impl RustyKelvinBot {
     pub async fn deepseek_chat(self, reasoning: bool, preprompt: Option<String>) {
-        let api_key = self.tokens.get(&TokenType::DeepSeek);
+        let api_key = self.tkn.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
         let request_body = match reasoning {
             true => self.clone().reasoning_body().await,

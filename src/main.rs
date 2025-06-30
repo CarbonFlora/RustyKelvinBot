@@ -1,3 +1,6 @@
+use std::thread::sleep;
+use std::time::Duration;
+
 use anyhow::Context as _;
 use rustykelvinbot::RustyKelvinBot;
 use serenity::async_trait;
@@ -22,8 +25,11 @@ impl EventHandler for Bot {
         rkb.clone().handle_message().await;
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!("{} is connected!", ready.user.name);
+        sleep(Duration::from_secs(2));
+        let rkb = RustyKelvinBot::new(ctx, Message::default());
+        tokio::spawn(rkb.startup_refresh_timers());
     }
 }
 

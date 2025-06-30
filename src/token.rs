@@ -7,8 +7,8 @@ const OPEN_WEATHER_TOKEN: &str = "OPEN_WEATHER_TOKEN";
 const DEEPSEEK_TOKEN: &str = "DEEPSEEK_TOKEN";
 
 #[derive(Debug, Clone)]
-pub struct RKBTokens {
-    map: HashMap<TokenType, String>,
+pub struct Tokens {
+    tokens: HashMap<TokenType, String>,
 }
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -29,7 +29,7 @@ impl TryFrom<String> for TokenType {
     }
 }
 
-impl RKBTokens {
+impl Tokens {
     pub fn new() -> Self {
         let mut map = HashMap::new();
         let token_file_content =
@@ -47,15 +47,15 @@ impl RKBTokens {
             .for_each(|(key, value)| {
                 map.insert(key, value);
             });
-        Self { map }
+        Self { tokens: map }
     }
 
     pub fn get(&self, key: &TokenType) -> &str {
-        self.map.get(key).expect("Key does not exist.")
+        self.tokens.get(key).expect("Key does not exist.")
     }
 }
 
-impl Default for RKBTokens {
+impl Default for Tokens {
     fn default() -> Self {
         Self::new()
     }

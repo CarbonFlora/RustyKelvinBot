@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
 
+use resource::Resources;
 use serenity::all::{ChannelId, Context, EditMessage, GetMessages, Message};
-use token::RKBTokens;
+use token::Tokens;
 use tracing::error;
 
 pub mod action;
+pub mod resource;
 pub mod text;
 mod token;
 
@@ -12,7 +14,8 @@ mod token;
 pub struct RustyKelvinBot {
     pub ctx: Context,
     pub msg: Message,
-    pub tokens: RKBTokens,
+    pub tkn: Tokens,
+    pub rsc: Resources,
 }
 
 const ENTRY_STRING: &str = "?";
@@ -22,7 +25,8 @@ impl RustyKelvinBot {
         RustyKelvinBot {
             ctx,
             msg,
-            tokens: RKBTokens::default(),
+            tkn: Tokens::default(),
+            rsc: Resources::default(),
         }
     }
 
@@ -43,6 +47,7 @@ impl RustyKelvinBot {
             "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
             "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
             "test" => tokio::spawn(rkb_binding.test()),
+            "timer" => tokio::spawn(rkb_binding.timer()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };
     }

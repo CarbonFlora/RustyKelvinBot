@@ -52,10 +52,10 @@ impl RKBServiceRequest {
         let rkb_binding = self.clone();
         match action.as_str() {
             "help" | "" => tokio::spawn(rkb_binding.help()),
-            // "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
-            // "geo" => tokio::spawn(rkb_binding.geo()),
-            // "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
-            // "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
+            "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
+            "geo" => tokio::spawn(rkb_binding.geo()),
+            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
+            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
             // "test" => tokio::spawn(rkb_binding.test()),
             "timer" => tokio::spawn(rkb_binding.timer()),
             _ => tokio::spawn(rkb_binding.nonaction()),
@@ -91,9 +91,10 @@ impl RKBServiceRequest {
         Ok(())
     }
 
-    async fn nonaction_pinned(self) {
-        self.send_message("Pinned message is a non-action. 🎣".to_owned())
-            .await;
+    async fn nonaction_pinned(self) -> Result<(), RKBServiceRequestErr> {
+        self.try_send_message("Pinned message is a non-action. 🎣".to_owned())
+            .await?;
+        Ok(())
     }
 
     async fn send_message(self, response: String) -> Option<Message> {
@@ -144,15 +145,21 @@ impl RKBServiceRequest {
             .expect("Failed to get text channel history.")
     }
 
-    async fn edit_message(self, message: &mut Message, response: &str) -> Option<Message> {
+    async fn try_edit_message(
+        self,
+        message: &mut Message,
+        response: &str,
+    ) -> Result<Message, RKBServiceRequestErr> {
         let mut responses = breakdown_string(response.to_string());
-        let first_response = responses.pop_front()?;
+        let first_response = responses
+            .pop_front()
+            .ok_or(RKBServiceRequestErr::DiscordMessageSendEmpty)?;
         let builder = EditMessage::new().content(first_response);
         message
             .edit(self.ctx.clone(), builder)
             .await
             .expect("Failed to edit Discord message.");
-        self.send_message_batch(responses).await
+        self.try_send_message_batch(responses).await
     }
 }
 

@@ -1,17 +1,25 @@
 use std::{collections::HashMap, fs};
-
+use thiserror::Error;
 use toml::Table;
+
+use crate::err::{self, RKBServiceRequestErr};
 
 const TOKEN_FILE_PATH_STR: &str = "./Secrets.toml";
 const OPEN_WEATHER_TOKEN: &str = "OPEN_WEATHER_TOKEN";
 const DEEPSEEK_TOKEN: &str = "DEEPSEEK_TOKEN";
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("missing key")]
+    MissingKey(TokenType),
+}
 
 #[derive(Debug, Clone)]
 pub struct Tokens {
     tokens: HashMap<TokenType, String>,
 }
 
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
     OpenWeather,
     DeepSeek,
@@ -50,8 +58,10 @@ impl Tokens {
         Self { tokens: map }
     }
 
-    pub fn get(&self, key: &TokenType) -> &str {
-        self.tokens.get(key).expect("Key does not exist.")
+    pub fn get(&self, key: &TokenType) -> Result<&String, RKBServiceRequestErr> {
+        self.tokens
+            .get(key)
+            .ok_or(err::RKBServiceRequestErr::Token(Error::MissingKey(*key)))
     }
 }
 

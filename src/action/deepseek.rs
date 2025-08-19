@@ -3,40 +3,48 @@ use deepseek_rs::{
     request::{Model, Role},
     DeepSeekClient,
 };
+use thiserror::Error;
 
-use crate::{split_action, token::TokenType, RKBServiceRequest};
+use crate::{err::RKBServiceRequestErr, split_action, token::TokenType, RKBServiceRequest};
 
 const CONTEXT_SIZE: u8 = 21;
 const SYSTEM_PROMPT: &str = "Be short and concise. Cite your sources.";
 
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("placeholder")]
+    Placeholder,
+    #[error("invalid deepseek response")]
+    DeepseekError,
+}
+
 impl RKBServiceRequest {
-    pub async fn deepseek_chat(self, reasoning: bool, preprompt: Option<String>) {
-        let api_key = self.tkn.get(&TokenType::DeepSeek);
+    pub async fn deepseek_chat(
+        self,
+        reasoning: bool,
+        preprompt: Option<String>,
+    ) -> Result<(), RKBServiceRequestErr> {
+        let api_key = self.tkn.get(&TokenType::DeepSeek)?;
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());
         let request_body = match reasoning {
             true => self.clone().reasoning_body().await,
             false => self.clone().chat_body(preprompt).await,
         };
-        let mut skeleton_message = self
-            .clone()
-            .send_message(String::from("*Thinking...*"))
-            .await
-            .expect("Failed to send skeleton message.");
+        let mut skeleton_message = self.clone().try_send_message(String::from("*..*")).await?;
         let cc_response = client
             .chat_completions(request_body)
             .await
-            .expect("Failed to get a valid response from DeepSeek.");
-        let cc_choices = cc_response
-            .choices
-            .first()
-            .expect("DeekSeek responded with no choices.")
-            .to_owned();
+            .map_err(|_| Error::DeepseekError)?;
+        let cc_choices = cc_response.choices.first().ok_or(Error::DeepseekError)?;
         let response = cc_choices
             .message
             .content
-            .expect("DeekSeek responded with an empty message.");
+            .clone()
+            .ok_or(Error::DeepseekError)?;
         // let response_md = RKBMarkdown::from(response).to_string();
-        self.edit_message(&mut skeleton_message, &response).await;
+        self.try_edit_message(&mut skeleton_message, &response)
+            .await?;
+        Ok(())
     }
 
     async fn chat_body(self, preprompt: Option<String>) -> RequestBody {

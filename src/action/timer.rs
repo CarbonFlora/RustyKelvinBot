@@ -34,16 +34,16 @@ impl Display for Timer {
         let seconds = remainder;
 
         if days > 0 {
-            string += &format!("{} Days", days);
+            string += &format!("{}d", days);
         };
         if hours > 0 {
-            string += &format!("{} Hours", hours);
+            string += &format!("{}h", hours);
         };
         if minutes > 0 {
-            string += &format!("{} Minutes", minutes);
+            string += &format!("{}m", minutes);
         };
         if seconds > 0 {
-            string += &format!("{} Seconds", seconds);
+            string += &format!("{}s", seconds);
         };
 
         writeln!(f, "{}", string)
@@ -57,10 +57,13 @@ impl TryFrom<RKBServiceRequest> for Timer {
         let content = value
             .get_content()
             .ok_or(Error::CannotParseEmptyUserInputTime)?;
-        let r_delta = try_delta_time(content.to_string())?;
-        let delta = r_delta.to_std().map_err(|_| Error::Overflow)?;
+        let timedelta = try_deltatime(content.to_string())?;
+        let duration = timedelta.to_std().map_err(|_| Error::Overflow)?;
         let dob = Utc::now();
-        Ok(Timer { dob, delta })
+        Ok(Timer {
+            dob,
+            delta: duration,
+        })
     }
 }
 
@@ -68,22 +71,12 @@ impl RKBServiceRequest {
     pub async fn timer(self) -> Result<(), RKBServiceRequestErr> {
         let timer = Timer::try_from(self.clone())?;
         let rkbmessage_start = self.clone().try_send_message(timer.to_string()).await?;
-        // let raw = split_action(self.msg.content.clone()).1;
-        // let r_delta = try_delta_time(raw);
-        // if let Err(err) = r_delta {
-        //     self.send_message(err).await;
-        //     return;
-        // }
-        // let delta = r_delta.unwrap();
-        // let utc = Utc::now() + delta;
-        // let delta_string = format!("{} ", utc.to_rfc3339());
-        // let message = self.clone().send_message(delta_string).await.unwrap();
         self.msg
             .channel_id
             .pin(&self.ctx.http, rkbmessage_start.id)
             .await
             .expect("Bot missing Manage Messages permissions.");
-        self.clone().timer_loop(timer.delta).await;
+        self.clone().timer_loop(timer.delta).await?;
         let _ = self
             .msg
             .channel_id
@@ -92,21 +85,16 @@ impl RKBServiceRequest {
         Ok(())
     }
 
-    pub async fn timer_loop(self, period: Duration) {
+    pub async fn timer_loop(self, period: Duration) -> Result<(), RKBServiceRequestErr> {
         tokio::time::sleep(period).await;
-        self.clone().send_message("Timers dead.".to_string()).await;
+        self.clone()
+            .try_send_message("Timers dead.".to_string())
+            .await?;
+        Ok(())
     }
-
-    // pub async fn minute_timer(self) {
-    //     let mut interval = time::interval(Duration::from_secs(30));
-    //     loop {
-    //         interval.tick().await;
-    //         self.clone().send_message(Utc::now().to_string()).await;
-    //     }
-    // }
 }
 
-fn try_delta_time(string: String) -> Result<TimeDelta, RKBServiceRequestErr> {
+fn try_deltatime(string: String) -> Result<TimeDelta, RKBServiceRequestErr> {
     let mut chars = string.chars();
     let mut buffer = chars
         .next()

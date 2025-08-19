@@ -1,8 +1,19 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::{token::TokenType, RKBServiceRequest};
+use crate::{err::RKBServiceRequestErr, token::TokenType, RKBServiceRequest};
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("placeholder")]
+    Placeholder,
+    #[error("failed to query for openweather")]
+    OpenWeatherQueryError,
+    #[error("failed to parse openweather")]
+    OpenWeatherParseError,
+}
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct GeoJson {
@@ -220,14 +231,15 @@ impl Display for WeatherJson {
 }
 
 impl RKBServiceRequest {
-    pub async fn geo(self) {
-        let response = self.clone().geo_reqwest().await;
-        self.send_message(response.to_string()).await;
+    pub async fn geo(self) -> Result<(), RKBServiceRequestErr> {
+        let response = self.clone().geo_reqwest().await?;
+        self.try_send_message(response.to_string()).await?;
+        Ok(())
     }
 
-    pub async fn weather(self) {
-        let geo = self.clone().geo_reqwest().await;
-        let api_key = self.tkn.get(&TokenType::OpenWeather);
+    pub async fn weather(self) -> Result<(), RKBServiceRequestErr> {
+        let geo = self.clone().geo_reqwest().await?;
+        let api_key = self.tkn.get(&TokenType::OpenWeather)?;
         let url = format!(
             "https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&appid={}&units=imperial",
             geo.lat, geo.lon, api_key
@@ -243,28 +255,26 @@ impl RKBServiceRequest {
             .json::<WeatherJson>()
             .await
             .expect("Failed to parse api package as json.");
-        self.send_message(response.to_string()).await;
+        self.try_send_message(response.to_string()).await?;
+        Ok(())
     }
 
-    async fn geo_reqwest(self) -> GeoJson {
+    async fn geo_reqwest(self) -> Result<GeoJson, RKBServiceRequestErr> {
         let zip_code = "91776";
         let country_code = "US";
-        let api_key = self.tkn.get(&TokenType::OpenWeather);
+        let api_key = self.tkn.get(&TokenType::OpenWeather)?;
         let url = format!(
             "http://api.openweathermap.org/geo/1.0/zip?zip={},{}&appid={}",
             zip_code, country_code, api_key
         );
 
-        reqwest::get(url)
+        let query_response = reqwest::get(url)
             .await
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to query api for openweather. ({}, {})",
-                    zip_code, country_code
-                )
-            })
+            .map_err(|_| Error::OpenWeatherQueryError)?;
+        let geojson = query_response
             .json::<GeoJson>()
             .await
-            .expect("Failed to parse api package as json.")
+            .map_err(|_| Error::OpenWeatherParseError)?;
+        Ok(geojson)
     }
 }

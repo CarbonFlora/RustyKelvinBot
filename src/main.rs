@@ -28,8 +28,8 @@ impl EventHandler for Bot {
     async fn ready(&self, ctx: Context, ready: Ready) {
         info!("{} is connected!", ready.user.name);
         sleep(Duration::from_secs(2));
-        let rkb = RustyKelvinBot::new(ctx, Message::default());
-        tokio::spawn(rkb.startup_refresh_timers());
+        // let rkb = RustyKelvinBot::new(ctx, Message::default());
+        // tokio::spawn(rkb.startup_refresh_timers());
     }
 }
 

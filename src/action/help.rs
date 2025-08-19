@@ -1,7 +1,7 @@
-use crate::{RustyKelvinBot, ENTRY_STRING};
+use crate::{err::RKBServiceRequestErr, RKBServiceRequest, ENTRY_STRING};
 
-impl RustyKelvinBot {
-    pub async fn help(self) {
+impl RKBServiceRequest {
+    pub async fn help(self) -> Result<(), RKBServiceRequestErr> {
         let help_text = format!(
             "```USAGE: 
 {}[ACTION] [CONTEXT]
@@ -12,6 +12,7 @@ REASON - Ask DeepSeek AI what you put in [CONTEXT].
 TIMER  - Set a timer to trigger after time elapsed. (#d#h#m)```",
             ENTRY_STRING
         );
-        self.send_message(help_text).await;
+        self.try_send_message(help_text).await?;
+        Ok(())
     }
 }

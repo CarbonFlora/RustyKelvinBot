@@ -1,17 +1,19 @@
 use std::collections::VecDeque;
 
+use err::RKBServiceRequestErr;
 use resource::Resources;
 use serenity::all::{ChannelId, Context, EditMessage, GetMessages, Message};
 use token::Tokens;
 use tracing::error;
 
 pub mod action;
+pub mod err;
 pub mod resource;
 pub mod text;
 mod token;
 
 #[derive(Debug, Clone)]
-pub struct RustyKelvinBot {
+pub struct RKBServiceRequest {
     pub ctx: Context,
     pub msg: Message,
     pub tkn: Tokens,
@@ -20,9 +22,9 @@ pub struct RustyKelvinBot {
 
 const ENTRY_STRING: &str = "?";
 
-impl RustyKelvinBot {
+impl RKBServiceRequest {
     pub fn new(ctx: Context, msg: Message) -> Self {
-        RustyKelvinBot {
+        RKBServiceRequest {
             ctx,
             msg,
             tkn: Tokens::default(),
@@ -30,26 +32,35 @@ impl RustyKelvinBot {
         }
     }
 
+    pub fn get_content(&self) -> Option<&str> {
+        self.msg
+            .content
+            .trim_start_matches(ENTRY_STRING)
+            .split_once(' ')
+            .map(|v| v.1)
+    }
+
     pub async fn is_user_message(&self) -> bool {
         !self.msg.author.bot && !self.msg.author.system
     }
 
-    pub async fn handle_message(self) {
+    pub async fn handle_message(self) -> Result<(), RKBServiceRequestErr> {
         if !self.msg.content.starts_with(ENTRY_STRING) {
-            return;
+            return Ok(());
         }
         let (action, _content) = split_action(self.msg.content.clone());
         let rkb_binding = self.clone();
         match action.as_str() {
             "help" | "" => tokio::spawn(rkb_binding.help()),
-            "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
-            "geo" => tokio::spawn(rkb_binding.geo()),
-            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
-            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
-            "test" => tokio::spawn(rkb_binding.test()),
+            // "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
+            // "geo" => tokio::spawn(rkb_binding.geo()),
+            // "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
+            // "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
+            // "test" => tokio::spawn(rkb_binding.test()),
             "timer" => tokio::spawn(rkb_binding.timer()),
             _ => tokio::spawn(rkb_binding.nonaction()),
         };
+        Ok(())
     }
 
     pub async fn pinned_handle_message(self) -> bool {
@@ -75,8 +86,9 @@ impl RustyKelvinBot {
         true
     }
 
-    async fn nonaction(self) {
-        self.send_message("non-action. 🎣".to_owned()).await;
+    async fn nonaction(self) -> Result<(), RKBServiceRequestErr> {
+        self.try_send_message("non-action. 🎣".to_owned()).await?;
+        Ok(())
     }
 
     async fn nonaction_pinned(self) {
@@ -87,6 +99,31 @@ impl RustyKelvinBot {
     async fn send_message(self, response: String) -> Option<Message> {
         let responses = breakdown_string(response);
         self.send_message_batch(responses).await
+    }
+
+    async fn try_send_message(self, response: String) -> Result<Message, RKBServiceRequestErr> {
+        let responses = breakdown_string(response);
+        self.try_send_message_batch(responses).await
+    }
+
+    async fn try_send_message_batch(
+        self,
+        responses: VecDeque<String>,
+    ) -> Result<Message, RKBServiceRequestErr> {
+        let mut latest_message = None;
+        for response in &responses {
+            latest_message = self
+                .msg
+                .channel_id
+                .say(&self.ctx.http, response)
+                .await
+                .map(Some)
+                .map_err(|_| RKBServiceRequestErr::DiscordMessageSendFailure(response.clone()))?;
+        }
+        let Some(last_message) = latest_message else {
+            Err(RKBServiceRequestErr::DiscordMessageSendEmpty)?
+        };
+        Ok(last_message)
     }
 
     async fn send_message_batch(self, responses: VecDeque<String>) -> Option<Message> {

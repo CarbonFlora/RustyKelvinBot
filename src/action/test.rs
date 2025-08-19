@@ -1,6 +1,6 @@
-use crate::RustyKelvinBot;
+use crate::RKBServiceRequest;
 
-impl RustyKelvinBot {
+impl RKBServiceRequest {
     pub async fn test(self) {
         let response = reqwest::get("https://jsonplaceholder.typicode.com/posts")
             .await

@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{token::TokenType, RustyKelvinBot};
+use crate::{token::TokenType, RKBServiceRequest};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct GeoJson {
@@ -219,7 +219,7 @@ impl Display for WeatherJson {
     }
 }
 
-impl RustyKelvinBot {
+impl RKBServiceRequest {
     pub async fn geo(self) {
         let response = self.clone().geo_reqwest().await;
         self.send_message(response.to_string()).await;

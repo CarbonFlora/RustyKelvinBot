@@ -4,12 +4,12 @@ use deepseek_rs::{
     DeepSeekClient,
 };
 
-use crate::{split_action, token::TokenType, RustyKelvinBot};
+use crate::{split_action, token::TokenType, RKBServiceRequest};
 
 const CONTEXT_SIZE: u8 = 21;
 const SYSTEM_PROMPT: &str = "Be short and concise. Cite your sources.";
 
-impl RustyKelvinBot {
+impl RKBServiceRequest {
     pub async fn deepseek_chat(self, reasoning: bool, preprompt: Option<String>) {
         let api_key = self.tkn.get(&TokenType::DeepSeek);
         let client = DeepSeekClient::new_with_api_key(api_key.to_string());

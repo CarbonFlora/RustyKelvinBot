@@ -50,15 +50,16 @@ impl RKBServiceRequest {
         }
         let (action, _content) = split_action(self.msg.content.clone());
         let rkb_binding = self.clone();
+
         match action.as_str() {
-            "help" | "" => tokio::spawn(rkb_binding.help()),
-            "weather" | "temperature" | "temp" => tokio::spawn(rkb_binding.weather()),
-            "geo" => tokio::spawn(rkb_binding.geo()),
-            "chat" => tokio::spawn(rkb_binding.deepseek_chat(false, None)),
-            "reason" => tokio::spawn(rkb_binding.deepseek_chat(true, None)),
+            "help" | "" => rkb_binding.help().await?,
+            "weather" | "temperature" | "temp" => rkb_binding.weather().await?,
+            "geo" => rkb_binding.geo().await?,
+            "chat" => rkb_binding.deepseek_chat(false, None).await?,
+            "reason" => rkb_binding.deepseek_chat(true, None).await?,
             // "test" => tokio::spawn(rkb_binding.test()),
-            "timer" => tokio::spawn(rkb_binding.timer()),
-            _ => tokio::spawn(rkb_binding.nonaction()),
+            "timer" => rkb_binding.timer().await?,
+            _ => rkb_binding.nonaction().await?,
         };
         Ok(())
     }

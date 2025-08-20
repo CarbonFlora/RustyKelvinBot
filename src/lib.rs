@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use err::RKBServiceRequestErr;
 use resource::Resources;
-use serenity::all::{ChannelId, Context, EditMessage, GetMessages, Message};
+use serenity::all::{ChannelId, Context, EditMessage, GetMessages, Message, MessageId};
 use token::Tokens;
 use tracing::error;
 
@@ -37,7 +37,7 @@ impl RKBServiceRequest {
             .content
             .trim_start_matches(ENTRY_STRING)
             .split_once(' ')
-            .map(|v| v.1)
+            .map(|v| v.1.trim())
     }
 
     pub async fn is_user_message(&self) -> bool {
@@ -103,13 +103,13 @@ impl RKBServiceRequest {
         self.send_message_batch(responses).await
     }
 
-    async fn try_send_message(self, response: String) -> Result<Message, RKBServiceRequestErr> {
+    async fn try_send_message(&self, response: String) -> Result<Message, RKBServiceRequestErr> {
         let responses = breakdown_string(response);
         self.try_send_message_batch(responses).await
     }
 
     async fn try_send_message_batch(
-        self,
+        &self,
         responses: VecDeque<String>,
     ) -> Result<Message, RKBServiceRequestErr> {
         let mut latest_message = None;
@@ -161,6 +161,28 @@ impl RKBServiceRequest {
             .await
             .expect("Failed to edit Discord message.");
         self.try_send_message_batch(responses).await
+    }
+
+    pub async fn try_pin(
+        &self,
+        message_id: impl Into<MessageId>,
+    ) -> Result<(), RKBServiceRequestErr> {
+        self.msg
+            .channel_id
+            .pin(&self.ctx.http, message_id)
+            .await
+            .map_err(|_| RKBServiceRequestErr::DiscordMissingPermissions)
+    }
+
+    pub async fn try_delete_message(
+        &self,
+        message_id: impl Into<MessageId>,
+    ) -> Result<(), RKBServiceRequestErr> {
+        self.msg
+            .channel_id
+            .delete_message(&self.ctx.http, message_id)
+            .await
+            .map_err(|_| RKBServiceRequestErr::DiscordMissingPermissions)
     }
 }
 

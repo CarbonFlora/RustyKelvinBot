@@ -20,7 +20,7 @@ impl EventHandler for Bot {
             return;
         }
         if let Err(err) = rkb.clone().handle_message().await {
-            println!("{}", err);
+            println!("{:?}", err);
         };
     }
 

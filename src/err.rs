@@ -16,4 +16,6 @@ pub enum RKBServiceRequestErr {
     DiscordMessageSendFailure(String),
     #[error("attempted to send no messages")]
     DiscordMessageSendEmpty,
+    #[error("missing permissions")]
+    DiscordMissingPermissions,
 }
